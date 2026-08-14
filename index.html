@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>골프장 가격하락 푸시 — 지금 상태와 개발 준비중인 것</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+:root{
+  --ink:#1A2027; --dark:#0F1419; --slate:#6B7780; --muted:#9AA4AB;
+  --line:#D8DDE0; --bg:#F4F6F6; --white:#FFFFFF; --acc:#2F6470;
+  --dline:#2B343B; --dtext:#C3CBD0;
+  --f:"Pretendard","Pretendard Variable",-apple-system,BlinkMacSystemFont,
+      "Apple SD Gothic Neo","Malgun Gothic","맑은 고딕",system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:#20262B;font-family:var(--f);overflow:hidden;
+  -webkit-font-smoothing:antialiased;font-feature-settings:"tnum"}
+
+#stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+#deck{width:1280px;height:720px;transform-origin:center center;position:relative}
+
+.slide{position:absolute;inset:0;background:var(--white);color:var(--ink);
+  padding:64px 72px;display:none;flex-direction:column}
+.slide.on{display:flex}
+.slide.dark{background:var(--dark);color:var(--white)}
+
+.hd{display:flex;align-items:baseline;gap:14px;margin-bottom:6px}
+.hd .no{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.1em}
+.hd h2{font-size:31px;font-weight:800;letter-spacing:-.02em;line-height:1.2}
+.sub{font-size:14.5px;color:var(--slate);margin:0 0 6px 26px;line-height:1.5}
+.dark .sub{color:var(--muted)}
+
+.card{background:var(--white);border:1px solid var(--line);padding:22px 26px}
+.card.tint{background:var(--bg)}
+.card.ink{background:var(--dark);border-color:var(--dark);color:var(--white)}
+.k{font-size:11.5px;color:var(--slate);letter-spacing:.09em;font-weight:600;margin-bottom:9px}
+.ink .k{color:var(--muted)}
+.v{font-size:38px;font-weight:800;letter-spacing:-.03em;line-height:1}
+.v.acc{color:var(--acc)}
+.d{font-size:12.5px;color:var(--slate);margin-top:11px;line-height:1.5}
+.ink .d{color:var(--dtext)}
+
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+
+.blist{margin-top:26px;display:flex;flex-direction:column;gap:14px}
+.blist li{list-style:none;display:flex;gap:13px;align-items:flex-start;font-size:14.5px;line-height:1.5}
+.blist li::before{content:"";width:7px;height:7px;background:var(--acc);
+  flex:0 0 7px;margin-top:7px}
+.dark .blist li::before{background:#7FB3BE}
+
+.rows{display:flex;flex-direction:column;gap:11px}
+.row{border:1px solid var(--line);padding:13px 20px;background:var(--white)}
+.row b{display:flex;align-items:center;justify-content:space-between;gap:14px;
+  font-size:15px;font-weight:700;margin-bottom:3px}
+.row span{font-size:12.5px;color:var(--slate);line-height:1.45}
+.row.acc{border-left:3px solid var(--acc)}
+.row.warn{border-left:3px solid #B4762F;background:#FCFAF6}
+
+/* 결론 — 골프장 제휴 타입 뱃지 */
+.row b .tag{font-style:normal;flex:0 0 auto;font-size:11px;font-weight:700;letter-spacing:.01em;
+  padding:3px 9px;border:1px solid var(--line);color:var(--slate);background:var(--bg);white-space:nowrap}
+.row b .tag.dyn{border-color:var(--acc);color:var(--acc);background:#EDF3F4}
+.row b .tag.fee{border-color:#C08A45;color:#8A5A1F;background:#FBF6EE}
+.row b .tag.all{border-color:#8A959C;color:#434E55;background:#EFF1F2}
+
+table{width:100%;border-collapse:collapse;font-size:14px;background:var(--white)}
+th,td{padding:10px 14px;border:1px solid var(--line);text-align:left;vertical-align:middle}
+th{font-size:11.5px;font-weight:700;color:var(--slate);letter-spacing:.04em;background:var(--bg)}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+td.ty{font-weight:700}
+td.ty em{display:block;font-style:normal;font-size:11.5px;font-weight:500;color:var(--slate);margin-top:2px}
+td.y{color:var(--acc);font-weight:700}
+td.x{color:#A8B0B5}
+tr.tot td{font-weight:700;background:#FAFBFB}
+
+.alloc{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:20px}
+.alloc div{border-top:2px solid var(--ink);padding-top:10px}
+.alloc b{display:block;font-size:14px;font-weight:700;margin-bottom:4px}
+.alloc span{font-size:12.5px;color:var(--slate);line-height:1.5}
+
+.note{margin-top:auto;padding-top:22px;font-size:12.5px;color:var(--slate);line-height:1.55}
+.dark .note{color:var(--muted)}
+.note a{color:var(--acc)}
+
+.step{border:1px solid var(--line);padding:20px 22px;background:var(--white);min-height:150px}
+.step.last{background:var(--dark);border-color:var(--dark);color:var(--white)}
+.step .s{font-size:10.5px;font-weight:700;color:var(--slate);letter-spacing:.12em}
+.step.last .s{color:var(--muted)}
+.step h4{font-size:17px;font-weight:800;margin:9px 0 12px;letter-spacing:-.01em;line-height:1.25}
+.step p{font-size:12.5px;color:var(--slate);line-height:1.5}
+.step.last p{color:var(--dtext)}
+
+.ctl{margin-top:22px}
+.ctl h5{font-size:15px;font-weight:700;margin-bottom:10px}
+.ctl div{display:grid;grid-template-columns:34px 300px 1fr;gap:12px;align-items:center;
+  border-top:1px solid var(--line);padding:9px 0;font-size:13.5px}
+.ctl div:last-child{border-bottom:1px solid var(--line)}
+.ctl i{font-style:normal;font-size:11.5px;font-weight:700;color:var(--acc)}
+.ctl b{font-weight:700}
+.ctl span{color:var(--slate);font-size:13px}
+
+.kpi div{display:grid;grid-template-columns:250px 430px 1fr;gap:20px;align-items:center;
+  border-top:1px solid var(--dline);padding:19px 0}
+.kpi div:last-child{border-bottom:1px solid var(--dline)}
+.kpi b{font-size:17px;font-weight:800}
+.kpi b.a{color:#7FB3BE}
+.kpi span{font-size:13.5px;color:var(--dtext)}
+.kpi em{font-style:normal;font-size:12.5px;color:var(--muted)}
+
+.cover{justify-content:center}
+.cover .eyebrow{font-size:13px;color:var(--muted);letter-spacing:.16em;margin-bottom:22px}
+.cover h1{font-size:52px;font-weight:800;line-height:1.2;letter-spacing:-.03em;margin-bottom:30px}
+.cover p{font-size:16px;color:var(--dtext);line-height:1.6;max-width:760px}
+.cover .meta{margin-top:52px;padding-top:20px;border-top:1px solid var(--dline);
+  display:flex;gap:44px;font-size:12.5px;color:var(--muted)}
+
+.fin{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;
+  background:var(--bg);border:1px solid var(--line);padding:20px 26px;margin-top:20px}
+.fin .k{margin-bottom:6px}
+.fin strong{font-size:23px;font-weight:800;letter-spacing:-.02em}
+.fin strong.a{color:var(--acc)}
+
+#nav{position:fixed;right:22px;bottom:18px;z-index:20;display:flex;align-items:center;gap:14px;
+  font-family:var(--f);font-size:12px;color:#8A959C;letter-spacing:.06em}
+#nav button{background:#2C343A;border:0;color:#C9D1D6;width:30px;height:30px;
+  border-radius:3px;cursor:pointer;font-size:14px;line-height:1}
+#nav button:hover{background:#3A444B}
+#hint{position:fixed;left:22px;bottom:20px;z-index:20;font-size:11.5px;color:#69737A;letter-spacing:.04em}
+
+@media print{
+  @page{size:1280px 720px;margin:0}
+  body{background:#fff;overflow:visible}
+  #stage{position:static;display:block}
+  #deck{width:1280px;height:auto;transform:none!important}
+  .slide{display:flex!important;position:relative;inset:auto;
+    width:1280px;height:720px;page-break-after:always;break-after:page}
+  #nav,#hint{display:none}
+}
+</style>
+</head>
+<body>
+
+<div id="stage"><div id="deck">
+
+<!-- ============ 표지 ============ -->
+<section class="slide dark cover on">
+  <div class="eyebrow">골프예약</div>
+  <h1>골프장 가격하락 푸시<br>지금 상태와 개발 준비중인 것</h1>
+  <p>사업은 다이나믹 푸시를 만들어 달라고 하고, 마케팅은 도입한 브레이즈로 가격하락 푸시를 하고 싶어 합니다.<br>
+     같은 자리를 놓고 두 요구가 부딪혔습니다. 어느 쪽이 어디를 맡을지 정리했습니다.</p>
+  <div class="meta"><span>2026-08-14</span><span>GOLFBKDEV-1185</span><span>측정 2026년 5월 · 최근 90일</span></div>
+</section>
+
+<!-- ============ 01 결론 ============ -->
+<section class="slide">
+  <div class="hd"><span class="no">01</span><h2>결론</h2></div>
+  <p class="sub">사업의 다이나믹 푸시와 마케팅의 브레이즈, 두 요구를 이렇게 갈랐습니다. 뒤에서 하나씩 풉니다.</p>
+  <div class="rows" style="margin-top:24px">
+    <div class="row acc"><b>자동 발송은 다이나믹푸시로만 만듭니다<i class="tag dyn">다이나믹-위탁,턴키</i></b>
+      <span>다이나믹프라이스가 적용된 위탁,턴키 구장입니다. 개발 준비 중입니다.</span></div>
+    <div class="row"><b>수수료 골프장은 사업팀 수동 발송을 유지합니다<i class="tag fee">수수료</i></b>
+      <span>가격을 골프장이 정하고 전화로 알려주는 구조라, 자동트리거가 시스템에 없습니다.</span></div>
+    <div class="row"><b>수동으로 닿는 범위는 부족합니다<i class="tag fee">수수료</i></b>
+      <span>가격이 내려간 날 가운데 알림이 따라 나간 건 열에 하나입니다. 사람 탓이 아니라 발생량이 처리량보다 많습니다.</span></div>
+    <div class="row warn"><b>그래도 자동 발송을 넓히지는 않습니다<i class="tag fee">수수료</i></b>
+      <span>수수료 골프장까지 넓히면 골프장 알림이 최대 두 배가 되고, 이미 돌고 있는 알림 두 개와 겹칩니다.</span></div>
+    <div class="row acc"><b>빈 곳은 고객이 직접 건 장치로 메웁니다<i class="tag all">전 골프장</i></b>
+      <span>티타임 찜과 레이더입니다. 둘 다 골프장 종류를 가리지 않고 이미 전 골프장이 대상입니다.</span></div>
+    <div class="row acc"><b>브레이즈에는 가격하락 대신 수동 발송 고도화를 맡깁니다<i class="tag fee">수수료</i></b>
+      <span>가격하락은 자사가 이미 두 채널로 보내고 있어 겹칩니다. 대신 사업팀 수동 발송이 브레이즈로 넘어가고 있으니, 그 내용과 타겟을 더 잘게 나누는 일이 브레이즈의 자리입니다.</span></div>
+  </div>
+</section>
+
+<!-- ============ 02 배분표 ============ -->
+<section class="slide">
+  <div class="hd"><span class="no">02</span><h2>어느 타입을 어디서 소화하는가</h2></div>
+  <p class="sub">골프장 전체를 세 타입으로 나누고, 각 타입을 어느 알림이 맡을지 한 장에 담았습니다.</p>
+  <table style="margin-top:20px">
+    <thead><tr>
+      <th style="width:30%">골프장 타입</th><th class="n" style="width:9%">곳</th>
+      <th style="width:20%">자동 가격하락</th><th style="width:23%">사업팀 수동 · 브레이즈</th><th style="width:18%">티타임 찜 · 레이더</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td class="ty">다이나믹<em>턴키 + 자사 위탁</em></td><td class="n">8</td>
+        <td class="y">개발해서 자동으로</td>
+        <td>지금처럼 유지</td>
+        <td class="y">열려 있음</td>
+      </tr>
+      <tr>
+        <td class="ty">수수료<em>선결제 + 현장결제</em></td><td class="n">246</td>
+        <td class="x">하지 않음 — 신호 없음</td>
+        <td class="y">브레이즈에서 고도화 <b>← 주력</b></td>
+        <td class="y">열려 있음</td>
+      </tr>
+      <tr>
+        <td class="ty">무상<em>사용료를 안 받는 제휴</em></td><td class="n">65</td>
+        <td class="x">하지 않음</td>
+        <td class="x">보내지 않음</td>
+        <td class="y">열려 있음</td>
+      </tr>
+      <tr class="tot">
+        <td>합계</td><td class="n">319</td>
+        <td>8곳</td><td>254곳</td><td>319곳 전부</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="alloc">
+    <div><b>자동 가격하락 — 만듭니다</b><span>최저가에 닿기 직전 한 번. 회사가 값을 정해서 시점을 아는 곳만 가능합니다.</span></div>
+    <div><b>사업팀 수동 — 브레이즈로 옮겨 고도화</b><span>골프장 연락이 출발점이라 자동화가 안 됩니다. 대신 내용·타겟을 잘게 나누고 발송을 고르게 폅니다.</span></div>
+    <div><b>티타임 찜 · 레이더 — 키웁니다</b><span>고객이 직접 건 조건이라 골프장 타입을 안 가립니다. 무상 골프장도 고객이 걸면 나갑니다.</span></div>
+  </div>
+  <p class="note">무상 65곳에 <b>보내지 않는 것은 회사가 미는 알림</b>입니다. 고객이 스스로 찜하거나 조건을 걸어둔 알림은 타입과 무관하게 나가는 것이 맞습니다.</p>
+</section>
+
+<!-- ============ 03 현상황 : 세 갈래 ============ -->
+<section class="slide">
+  <div class="hd"><span class="no">03</span><h2>지금 가격하락 알림은 세 갈래로 나갑니다</h2></div>
+  <p class="sub">같은 "값이 내려갔다"는 소식을 서로 다른 세 방식으로 보내고 있습니다.</p>
+  <div class="grid3" style="margin-top:26px">
+    <div class="card">
+      <div class="k">① 사업팀 수동 발송</div>
+      <div class="v" style="font-size:29px">월 1,504회</div>
+      <div class="d">골프장이 연락을 주면 담당자가 직접 만들어 보냅니다.<br>
+        가격 외에 쿠폰·신규 티타임도 같은 손으로 나갑니다.</div>
+    </div>
+    <div class="card">
+      <div class="k">② 티타임 찜 알림</div>
+      <div class="v" style="font-size:29px">매일 오후 2시</div>
+      <div class="d">고객이 찜해둔 티타임 값이 내려가면 보냅니다.<br>
+        2025년 1월부터 하루도 안 거르고 돌고 있습니다.</div>
+    </div>
+    <div class="card">
+      <div class="k">③ 레이더 알림</div>
+      <div class="v" style="font-size:29px">매시 정각</div>
+      <div class="d">고객이 최근 본 티타임 값이 내려가면 보냅니다.<br>
+        고객이 조건을 직접 걸어둔 경우입니다.</div>
+    </div>
+  </div>
+  <p class="note">②·③은 <b>고객이 스스로 찜하거나 조건을 건 경우에만</b> 반응합니다. 그래서 골프장 종류를 가리지 않고 전 골프장이 대상입니다.
+    ①만 골프장의 연락에 기대고 있어서, 연락이 닿는 곳까지가 범위입니다.</p>
+</section>
+
+<!-- ============ 04 현상황 : 수동이 닿는 범위 ============ -->
+<section class="slide">
+  <div class="hd"><span class="no">04</span><h2>수동 발송이 닿는 범위</h2></div>
+  <p class="sub">사업 실적 표의 골프장 수를 기준으로 봤습니다. 무상 65곳은 알림 대상이 아니라 뺐습니다.</p>
+  <div class="grid3" style="margin-top:24px">
+    <div class="card"><div class="k">최근 90일 알림이 나간 골프장</div>
+      <div class="v" style="font-size:33px">171<span style="font-size:19px;font-weight:700;color:var(--slate)"> / 254곳</span></div>
+      <div class="d">유상 골프장 셋 중 하나는<br>90일 동안 알림이 한 번도 안 나갔습니다.</div></div>
+    <div class="card"><div class="k">수수료 골프장 중 무발송</div>
+      <div class="v" style="font-size:33px">83<span style="font-size:19px;font-weight:700;color:var(--slate)"> / 246곳</span></div>
+      <div class="d">사업팀이 맡고 있는 구간에서<br>손이 닿지 않은 곳입니다.</div></div>
+    <div class="card ink"><div class="k">값 내린 날 알림이 따라 나간 비율</div>
+      <div class="v acc" style="font-size:33px;color:#7FB3BE">10.4%</div>
+      <div class="d">부킹일이 닷새 앞으로 온 시점에<br>값을 20% 넘게 내린 날 기준입니다.</div></div>
+  </div>
+  <ul class="blist" style="margin-top:22px">
+    <li><b>사람 탓이 아니라 양의 문제입니다.</b> 하루에 알릴 만한 가격 하락이 평균 86건 생기는데, 실제로 나가는 알림은 하루 9건입니다.</li>
+    <li>알림이 몰려 있기도 합니다. 알림이 나간 골프장 가운데 <b>상위 10곳이 전체의 30%</b>를 가져갑니다.</li>
+    <li>다이나믹 8곳은 100% 닿습니다. 못 닿는 83곳은 전부 수수료 골프장입니다.</li>
+  </ul>
+  <p class="note">사업 실적 표와 맞춘 기준 — 유상 254곳(선결제 106 · 현장결제 143 · 턴키 5)이 알림 대상, 무상 65곳은 제외.
+    <b>턴키와 자사 위탁을 묶어 다이나믹 8곳</b>, <b>선결제와 현장결제를 묶어 수수료 246곳</b>으로 봤습니다. 시스템 집계와 몇 곳 차이가 있어 사업 표 숫자에 맞췄습니다.</p>
+</section>
+
+<!-- ============ 05 왜 8곳만 자동인가 ============ -->
+<section class="slide">
+  <div class="hd"><span class="no">05</span><h2>왜 8개 구장만 자동이 되는가</h2></div>
+  <p class="sub">계약 종류가 아니라 <b>가격을 누가 정하는가</b>가 갈림길입니다.</p>
+  <div class="grid2" style="margin-top:26px">
+    <div class="card tint">
+      <div class="k" style="color:var(--slate)">자동 불가 · 수수료 골프장 246곳</div>
+      <div style="font-size:20px;font-weight:800;line-height:1.35;margin-bottom:18px">
+        골프장이 가격을 정하고<br>연락으로 알려줍니다</div>
+      <div style="border-top:1px solid var(--line);padding-top:16px">
+        <ul class="blist" style="margin-top:0;gap:11px;font-size:13.5px">
+          <li>특가인지 아닌지를 사람이 판단합니다</li>
+          <li>그 판단이 시스템에 남지 않습니다</li>
+          <li>자동으로 열 방아쇠가 없습니다</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card">
+      <div class="k" style="color:var(--acc)">자동 가능 · 8개 구장</div>
+      <div style="font-size:20px;font-weight:800;line-height:1.35;margin-bottom:18px">
+        카카오가 가격을 정합니다<br>내린 시점이 시스템에 남습니다</div>
+      <div style="border-top:1px solid var(--line);padding-top:16px">
+        <ul class="blist" style="margin-top:0;gap:11px;font-size:13.5px">
+          <li>값을 내린 시각을 정확히 압니다</li>
+          <li>최저가에 닿는 순간을 잡을 수 있습니다</li>
+          <li>사람 손을 거치지 않고 바로 보냅니다</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <p class="note">단순히 값이 내려갔다고 보내는 게 아니라, <b>최저가에 닿기 직전에 보내는 시점 정확도</b>가 이 알림의 핵심입니다. 그래서 가격 결정권이 어디 있는지가 기준이 됩니다.</p>
+</section>
+
+<!-- ============ 06 개발 준비중 : 대상 ============ -->
+<section class="slide">
+  <div class="hd"><span class="no">06</span><h2>개발 준비중 · 대상 골프장</h2></div>
+  <p class="sub">가격 자동조정이 켜져 있는 8곳 전부입니다.</p>
+  <div class="rows" style="margin-top:26px">
+    <div class="row acc"><b>자사 위탁 운영 3곳 — 의령 리온 · 이지스카이 · 더반</b>
+      <span>카카오가 직접 운영합니다. 가격 결정과 판매를 모두 우리가 합니다.</span></div>
+    <div class="row acc"><b>턴키 선매입 3곳 — JNJ · 거제뷰 · 동전주써미트</b>
+      <span>1년치 티타임을 미리 사두고 직접 팝니다. 얼마나 채우느냐가 곧 손익입니다.</span></div>
+    <div class="row acc"><b>예치금 매입 1곳 — 백제</b>
+      <span>매입해서 마진을 붙여 팝니다. 판매가를 우리가 정합니다.</span></div>
+    <div class="row warn"><b>확인 필요 1곳 — 모나크</b>
+      <span>계약도 운영도 수수료 골프장인데 가격 자동조정이 켜져 있습니다. 자동 발송 대상에 넣을지 사업 판단이 필요합니다.</span></div>
+  </div>
+  <p class="note">사업 실적 표의 턴키 5곳과는 구성이 조금 다릅니다. 여기는 <b>가격 자동조정이 실제로 켜져 있는 곳</b>을 그대로 뽑은 것입니다.
+    더반은 자사가 위탁 운영하면서 사용료 계약은 수수료로 잡혀 있어 사업 표에서는 현장결제 쪽에 들어가 있습니다. 자동 발송 여부를 가르는 건 <b>운영 주체 쪽</b>입니다.</p>
+</section>
+
+<!-- ============ 07 개발 준비중 : 언제 어떻게 ============ -->
+<section class="slide">
+  <div class="hd"><span class="no">07</span><h2>개발 준비중 · 언제 어떻게 보내는가</h2></div>
+  <p class="sub">값이 내려갈 때마다가 아니라, 최저가에 닿기 직전 한 번입니다.</p>
+  <div class="grid4" style="margin-top:24px">
+    <div class="step"><div class="s">STEP 1</div><h4>지켜본다</h4><p>부킹일 5일 전부터<br>1일 전까지</p></div>
+    <div class="step"><div class="s">STEP 2</div><h4>발동한다</h4><p>최저가까지 여유가<br>10% 이하로<br>처음 들어온 순간</p></div>
+    <div class="step"><div class="s">STEP 3</div><h4>고른다</h4><p>그 날짜로 골프장을<br>들여다본 고객<br>(이번 달 예약자 제외)</p></div>
+    <div class="step last"><div class="s">STEP 4</div><h4>보낸다</h4><p>더 내려갈 자리가<br>거의 없는 시점에<br>도착합니다</p></div>
+  </div>
+  <div class="ctl">
+    <h5>과하게 나가지 않도록 거는 장치</h5>
+    <div><i>01</i><b>같은 골프장·같은 날짜는 1회</b><span>한 고객에게 같은 건으로 두 번 가지 않습니다</span></div>
+    <div><i>02</i><b>야간 발송 금지</b><span>늦은 시간에는 보내지 않습니다</span></div>
+    <div><i>03</i><b>고객 한 사람이 받는 월 상한</b><span>아직 없습니다 — 이번에 정해야 합니다 (§08 참고)</span></div>
+  </div>
+</section>
+
+<!-- ============ 08 왜 넓히지 않는가 ============ -->
+<section class="slide">
+  <div class="hd"><span class="no">08</span><h2>수수료 골프장까지 넓히지 않는 이유</h2></div>
+  <p class="sub">지금 사업팀이 손으로 보내는 골프장 알림이 월 1,504회입니다. 자동 발송은 여기에 얹힙니다.</p>
+  <div class="grid3" style="margin-top:22px">
+    <div class="card"><div class="k">다이나믹 8곳만</div><div class="v acc" style="font-size:31px">월 195회</div>
+      <div class="d">지금 1,504회에 <b>13%</b>가 더해집니다<br>1,504 → 1,699회</div></div>
+    <div class="card"><div class="k">수수료 246곳까지</div><div class="v" style="font-size:31px">월 2,223회</div>
+      <div class="d">지금의 <b>2.5배</b>가 됩니다<br>1,504 → 3,727회</div></div>
+    <div class="card ink"><div class="k">골프장별 편차</div><div class="v" style="font-size:29px">84곳 ↔ 41곳</div>
+      <div class="d">보름 넘게 내리는 곳과 한두 번에 그치는 곳<br>같은 기준을 다 쓰면 한쪽만 울립니다</div></div>
+  </div>
+  <ul class="blist" style="margin-top:22px">
+    <li><b>내리는 빈도가 골프장마다 다릅니다.</b> 한 달에 보름 넘게 내리는 곳이 84곳(거의 매일 내리는 곳만 34곳)인데, 한두 번에 그치는 곳도 41곳입니다.</li>
+    <li><b>내리는 폭도 다릅니다.</b> 평균 45%가 넘게 내리는 곳이 11곳, 28%에 못 미치는 곳이 122곳입니다. 하나의 발동 기준을 전부에 그대로 쓰면 <b>어떤 곳은 매일 울리고 어떤 곳은 한 번도 안 울립니다.</b></li>
+    <li><b>고객 한 사람이 몇 번 받는지 상한이 지금 규칙에 없습니다.</b> 골프장 세 곳만 들여다보고 있어도 하루 두 번 넘게 받게 됩니다.</li>
+    <li><b>이미 두 개가 같은 일을 하고 있습니다.</b> 티타임 찜과 레이더가 값 하락을 보고 있어서, 세 번째 알림이 겹쳐 나갑니다.</li>
+  </ul>
+  <p class="note">겹치는 고객 수 자체는 아직 많지 않습니다. 문제는 <b>무게가 거꾸로 실린다는 점</b>입니다. 직접 찜하거나 본 확실한 관심에는 적게 나가고, 스쳐 지나간 약한 관심에 대량으로 나가는 구조가 됩니다.</p>
+</section>
+
+<!-- ============ 09 대신 이렇게 메운다 ============ -->
+<section class="slide dark">
+  <div class="hd"><span class="no" style="color:#5A646B">09</span><h2>대신 고객이 직접 건 장치를 키웁니다</h2></div>
+  <p class="sub">이 둘은 골프장 종류를 가리지 않습니다. 수수료 골프장도 이미 대상입니다.</p>
+  <div class="grid2" style="margin-top:28px">
+    <div class="card ink" style="border-color:var(--dline)">
+      <div class="k">티타임 찜 알림 · 2026년 7월</div>
+      <div class="v" style="font-size:31px">월 617건 · 356명</div>
+      <div class="d">2025년 1월부터 1년 반을 돌았는데 계속 이 수준입니다.<br>
+        알림이 약한 게 아니라 <b>찜을 거는 사람이 안 늘고 있습니다.</b></div>
+    </div>
+    <div class="card ink" style="border-color:var(--dline)">
+      <div class="k">레이더 가격하락 알림</div>
+      <div class="v acc" style="font-size:31px;color:#7FB3BE">예약 전환 4.9%</div>
+      <div class="d">신규 티타임 알림(3.5%)보다 성적이 좋습니다.<br>
+        고객이 조건을 직접 걸어둔 알림이라 반응이 다릅니다.</div>
+    </div>
+  </div>
+  <ul class="blist" style="margin-top:26px">
+    <li>고객이 스스로 건 조건에만 반응하므로, <b>아무리 커져도 원치 않는 알림이 되지 않습니다.</b></li>
+    <li><b>손봐야 할 곳은 알림이 아니라 그 앞단입니다.</b> 찜과 레이더를 어디서 얼마나 눈에 띄게 걸어주느냐입니다.</li>
+    <li>여기가 커지면 골프장의 연락을 기다리지 않고도 수수료 골프장의 빈 곳이 메워집니다.</li>
+  </ul>
+</section>
+
+<!-- ============ 10 협의할 것 ============ -->
+<section class="slide dark">
+  <div class="hd"><span class="no" style="color:#5A646B">10</span><h2>다음은 브레이즈가 할 일</h2></div>
+  <p class="sub">사업팀이 손으로 보내던 알림이 자체 관리툴에서 브레이즈로 넘어가고 있습니다. 손볼 자리가 옮겨졌습니다.</p>
+  <div class="grid3" style="margin-top:26px">
+    <div class="card ink" style="border-color:var(--dline)">
+      <div class="k">자체 관리툴 등록</div>
+      <div class="v" style="font-size:31px">684 → 325건</div>
+      <div class="d">7월과 8월 같은 기간(1~14일) 비교<br>한 달 만에 절반으로 줄었습니다</div>
+    </div>
+    <div class="card ink" style="border-color:var(--dline)">
+      <div class="k">등록한 담당자</div>
+      <div class="v" style="font-size:31px">11명 → 11명</div>
+      <div class="d">사람이 빠진 게 아닙니다<br>같은 손이 브레이즈로 옮겨 갔습니다</div>
+    </div>
+    <div class="card ink" style="border-color:var(--dline)">
+      <div class="k">발송이 몰린 세그먼트</div>
+      <div class="v acc" style="font-size:27px;color:#7FB3BE">캠페인 3% → 발송 42%</div>
+      <div class="d">넓은 조건 몇 건이 물량을 지고 갑니다<br>같은 고객에게 겹쳐 갈 가능성이 큽니다</div>
+    </div>
+  </div>
+  <div class="ctl" style="margin-top:24px">
+    <h5 style="color:#fff">브레이즈에서 열어 보고 손볼 것</h5>
+    <div style="border-color:var(--dline)"><i style="color:#7FB3BE">01</i><b>캠페인 내용</b><span style="color:var(--dtext)">어떤 문구로 어떤 골프장을 알리고 있는지 목록으로 뽑기</span></div>
+    <div style="border-color:var(--dline)"><i style="color:#7FB3BE">02</i><b>타겟을 더 잘게</b><span style="color:var(--dtext)">자체 관리툴 조건을 그대로 옮기는 데서 그치지 말고 더 세분화해서 겨냥하기</span></div>
+    <div style="border-color:var(--dline)"><i style="color:#7FB3BE">03</i><b>세그먼트 밸런스</b><span style="color:var(--dtext)">같은 건수를 더 많은 고객에게 고르게 퍼뜨리기 — 쏠린 물량 풀기</span></div>
+    <div style="border-color:var(--dline)"><i style="color:#7FB3BE">04</i><b>고객당 발송 총량</b><span style="color:var(--dtext)">한 사람이 한 달에 몇 번 받는지 재고 상한 걸기</span></div>
+    <div style="border-bottom:1px solid var(--dline);border-color:var(--dline)"><i style="color:#7FB3BE">05</i><b>겹치는 발송 솎기</b><span style="color:var(--dtext)">가격하락은 자사 두 채널이 이미 담당. 같은 내용이 올라가 있으면 뺀다</span></div>
+  </div>
+  <p class="note">한 고객이 몇 번 받았는지는 <b>지금 자사에서 셀 수 없습니다</b> — 수신자 단위 기록이 2026-06-14 이후 쌓이지 않습니다. 밸런스는 브레이즈에서 재는 편이 빠릅니다.
+    자동 발송 규칙은 다이나믹 푸시를 만들면서, 찜·레이더 노출은 제작 단계에서 정합니다. 원자료는 <a href="/reports/crm-push-automation-detail.html">상세 근거 문서</a>.</p>
+</section>
+
+</div></div>
+
+<div id="hint">← → 방향키로 이동 · Ctrl/Cmd+P 로 PDF 저장</div>
+<div id="nav">
+  <button id="prev" aria-label="이전">‹</button>
+  <span id="count">1 / 1</span>
+  <button id="next" aria-label="다음">›</button>
+</div>
+
+<script>
+(function(){
+  var slides=[].slice.call(document.querySelectorAll('.slide')),i=0;
+  var deck=document.getElementById('deck'),count=document.getElementById('count');
+  function show(n){
+    i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach(function(s,k){s.classList.toggle('on',k===i)});
+    count.textContent=(i+1)+' / '+slides.length;
+    location.hash=i+1;
+  }
+  function fit(){
+    var s=Math.min(window.innerWidth/1280,(window.innerHeight-60)/720);
+    deck.style.transform='scale('+s+')';
+  }
+  window.addEventListener('resize',fit); fit();
+  document.getElementById('prev').onclick=function(){show(i-1)};
+  document.getElementById('next').onclick=function(){show(i+1)};
+  document.addEventListener('keydown',function(e){
+    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' ') {show(i+1);e.preventDefault();}
+    if(e.key==='ArrowLeft'||e.key==='PageUp') {show(i-1);e.preventDefault();}
+    if(e.key==='Home') show(0);
+    if(e.key==='End') show(slides.length-1);
+  });
+  var h=parseInt(location.hash.replace('#',''),10);
+  show(isNaN(h)?0:h-1);
+})();
+</script>
+</body>
+</html>
